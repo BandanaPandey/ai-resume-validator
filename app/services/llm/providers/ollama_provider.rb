@@ -2,7 +2,7 @@
 require "net/http"
 require "json"
 
-class Providers::OllamaProvider < Providers::BaseProvider
+class Llm::Providers::OllamaProvider < Llm::Providers::BaseProvider
   OLLAMA_URL = ENV["OLLAMA_URL"] || "http://localhost:11434/api/generate"
   MODEL = ENV["OLLAMA_MODEL"] || "llama3"
 
@@ -39,7 +39,7 @@ class Providers::OllamaProvider < Providers::BaseProvider
     puts "Received response from Ollama: #{text}"
 
     begin
-      res = parse_json(text)
+      res = Llm::Providers::JsonParser.safe_parse(text)
       puts "Parsed response: #{res}"
       res
     rescue
@@ -48,16 +48,5 @@ class Providers::OllamaProvider < Providers::BaseProvider
         feedback: text || "Unable to parse response"
       }
     end
-  end
-
-  def parse_json(text)
-    json_start = text.index("{")
-    json_end = text.rindex("}")
-
-    return {} unless json_start && json_end
-
-    JSON.parse(text[json_start..json_end]).symbolize_keys
-  rescue
-    {}
   end
 end

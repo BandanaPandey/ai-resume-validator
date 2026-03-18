@@ -1,5 +1,5 @@
-# app/services/ai_providers/anthropic_provider.rb
-class Providers::AnthropicProvider < Providers::BaseProvider
+# app/services/llm/providers/anthropic_provider.rb
+class Llm::Providers::AnthropicProvider < Llm::Providers::BaseProvider
   def initialize
     @client = Anthropic::Client.new
   end
@@ -16,22 +16,9 @@ class Providers::AnthropicProvider < Providers::BaseProvider
     text = response.dig("content", 0, "text")
 
     begin
-      parse_json(text)
+      Llm::Providers::JsonParser.safe_parse(text)
     rescue
       { score: 70, feedback: text }
     end
-  end
-
-  private
-
-  def parse_json(text)
-    json_start = text.index("{")
-    json_end = text.rindex("}")
-
-    return {} unless json_start && json_end
-
-    JSON.parse(text[json_start..json_end]).symbolize_keys
-  rescue
-    {}
   end
 end

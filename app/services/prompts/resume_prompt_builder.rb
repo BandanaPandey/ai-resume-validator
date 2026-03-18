@@ -1,66 +1,41 @@
 # app/services/prompts/resume_prompt_builder.rb
 class Prompts::ResumePromptBuilder
-  def initialize(content, job_description: nil)
+  def initialize(content, job_description: nil, extracted_skills: {})
     @content = content
     @job_description = job_description
+    @skills = extracted_skills
   end
 
   def build
     <<~PROMPT
       You are an expert resume reviewer and ATS system.
 
-      Evaluate the resume strictly and objectively.
+      EXTRACTED SKILLS (from resume):
+      #{formatted_skills}
 
-      SCORING CRITERIA (0–100):
+      Evaluate the resume strictly.
 
-      1. ATS Compatibility (20%)
-      - Proper formatting
-      - No tables/images
-      - Standard sections
-
-      2. Content Quality (25%)
-      - Strong action verbs
-      - No fluff
-      - Clear impact
-
-      3. Quantification (20%)
-      - Metrics, numbers, results
-
-      4. Skills Relevance (20%)
-      - Relevant technical & soft skills
-
-      5. Structure & Clarity (15%)
-      - Easy to read
-      - Logical sections
+      SCORING CRITERIA:
+      - ATS Compatibility
+      - Content Quality
+      - Quantification
+      - Skills Relevance (IMPORTANT: use extracted skills)
+      - Structure
 
       #{job_section}
 
-      OUTPUT FORMAT (STRICT JSON ONLY):
+      OUTPUT STRICT JSON:
 
       {
         "overall_score": number,
-        "section_scores": {
-          "ats": number,
-          "content": number,
-          "quantification": number,
-          "skills": number,
-          "structure": number
-        },
+        "section_scores": {...},
         "strengths": [string],
         "weaknesses": [string],
         "improvements": [string],
-        "rewritten_bullets": [
-          {
-            "original": string,
-            "improved": string
-          }
-        ]
+        "rewritten_bullets": [...]
       }
 
-      IMPORTANT:
-      - Be strict (do NOT give high scores easily)
-      - Return ONLY JSON (no explanation text)
-      - If resume is weak, score accordingly
+      Return ONLY JSON.
 
       RESUME:
       #{@content}
@@ -69,6 +44,12 @@ class Prompts::ResumePromptBuilder
 
   private
 
+  def formatted_skills
+    @skills.map do |k, v|
+      "#{k}: #{v.join(", ")}"
+    end.join("\n")
+  end
+
   def job_section
     return "" unless @job_description
 
@@ -76,9 +57,7 @@ class Prompts::ResumePromptBuilder
       JOB DESCRIPTION:
       #{@job_description}
 
-      Also evaluate:
-      - Skill match with job
-      - Missing keywords
+      Compare extracted skills with job requirements.
     JOB
   end
 end
