@@ -9,5 +9,6 @@ Rails.application.routes.draw do
   # root "posts#index"
   namespace :api do
     resources :resumes, only: [:create]
+    post "skill_gap", to: "skill_gap#analyze"
   end
 end
