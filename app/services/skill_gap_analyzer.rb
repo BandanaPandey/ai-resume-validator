@@ -9,28 +9,25 @@ class SkillGapAnalyzer
     resume_skills = extract(@resume_text)
     job_skills = extract(@job_description)
 
-    puts "Extracted Resume Skills: #{resume_skills.inspect}"
-    puts "Extracted Job Description Skills: #{job_skills.inspect}"
+    matcher = SemanticSkillMatcher.new(provider: @provider)
+    semantic_result = matcher.match(resume_skills, job_skills)
 
-    matched = resume_skills & job_skills
-    missing = job_skills - resume_skills
-    extra   = resume_skills - job_skills
+    matched_skills = semantic_result[:matched].map { |m| m[:job_skill] }
+    missing_skills = semantic_result[:missing]
 
     {
-      match_score: calculate_score(matched, job_skills),
-      matched_skills: matched,
-      missing_skills: missing,
-      extra_skills: extra,
-      recommendations: build_recommendations(missing)
+      match_score: calculate_score(matched_skills, job_skills),
+      matched_skills: matched_skills,
+      missing_skills: missing_skills,
+      semantic_matches: semantic_result[:matched],
+      recommendations: build_recommendations(missing_skills)
     }
   end
 
   private
 
   def extract(text)
-    SkillExtractionService
-      .new(text, provider: @provider)
-      .extract[:all]
+    SkillExtractionService.new(text, provider: @provider).extract[:all]
   end
 
   def calculate_score(matched, total)
@@ -39,8 +36,6 @@ class SkillGapAnalyzer
   end
 
   def build_recommendations(missing)
-    missing.map do |skill|
-      "Add #{skill} to your resume if you have experience"
-    end
+    missing.map { |s| "Add #{s} if you have experience" }
   end
 end
