@@ -54,25 +54,67 @@ class SkillExtractionService
       ai_vals = ai[category] || []
       keyword_vals = map_dictionary_keys(keyword, category)
 
-      result[category] = (ai_vals + keyword_vals).map(&:downcase).uniq
+      result[category] = SkillNormalizer.normalize_list(ai_vals + keyword_vals)
     end
 
     result
   end
 
+  # #########################################
+  # # 🧹 Normalize Final Output
+  # #########################################
+  # def normalize(result)
+  #   all_skills = result.values.flatten.uniq
+
+  #   {
+  #     technical_skills: result[:technical_skills] || [],
+  #     soft_skills: result[:soft_skills] || [],
+  #     tools: result[:tools] || [],
+  #     frameworks: result[:frameworks] || [],
+  #     all: all_skills
+  #   }
+  # end
   #########################################
-  # 🧹 Normalize Final Output
+  # 🧹 Normalize + Deduplicate Final Output
   #########################################
   def normalize(result)
-    all_skills = result.values.flatten.uniq
+    # Step 1: Normalize each category
+    normalized = {}
 
-    {
-      technical_skills: result[:technical_skills] || [],
-      soft_skills: result[:soft_skills] || [],
-      tools: result[:tools] || [],
-      frameworks: result[:frameworks] || [],
-      all: all_skills
+    result.each do |category, skills|
+      normalized[category] = SkillNormalizer.normalize_list(skills)
+    end
+
+    # Step 2: Deduplicate within each category
+    normalized.each do |category, skills|
+      normalized[category] = skills.uniq
+    end
+
+    # Step 3: Cross-category flatten
+    all_skills = normalized.values.flatten.uniq
+
+    # Step 4: Semantic deduplication (optional but powerful)
+    deduplicator = SemanticDeduplicator.new()
+    all_skills = deduplicator.deduplicate(all_skills)
+
+    # Step 5: Re-map categories after semantic dedup
+    categorized = {
+      technical_skills: [],
+      soft_skills: [],
+      tools: [],
+      frameworks: []
     }
+
+    all_skills.each do |skill|
+      categorized[:technical_skills] << skill if SkillExtractor::SKILL_DICTIONARY[:technical].include?(skill)
+      categorized[:frameworks] << skill if SkillExtractor::SKILL_DICTIONARY[:frameworks].include?(skill)
+      categorized[:tools] << skill if SkillExtractor::SKILL_DICTIONARY[:tools].include?(skill)
+      categorized[:soft_skills] << skill if SkillExtractor::SKILL_DICTIONARY[:soft_skills].include?(skill)
+    end
+
+    categorized[:all] = all_skills
+
+    categorized
   end
 
   #########################################
