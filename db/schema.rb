@@ -10,10 +10,50 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_20_065851) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_23_064508) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
+
+  create_table "candidate_skills", force: :cascade do |t|
+    t.bigint "candidate_id"
+    t.datetime "created_at", null: false
+    t.string "level"
+    t.float "score"
+    t.bigint "skill_id"
+    t.datetime "updated_at", null: false
+    t.index ["candidate_id"], name: "index_candidate_skills_on_candidate_id"
+    t.index ["skill_id"], name: "index_candidate_skills_on_skill_id"
+  end
+
+  create_table "candidates", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.text "resume_text"
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "job_applications", force: :cascade do |t|
+    t.jsonb "analysis"
+    t.bigint "candidate_id"
+    t.datetime "created_at", null: false
+    t.bigint "job_id"
+    t.integer "rank"
+    t.integer "score"
+    t.integer "smart_score"
+    t.datetime "updated_at", null: false
+    t.index ["candidate_id"], name: "index_job_applications_on_candidate_id"
+    t.index ["job_id", "candidate_id"], name: "index_job_applications_on_job_id_and_candidate_id", unique: true
+    t.index ["job_id"], name: "index_job_applications_on_job_id"
+  end
+
+  create_table "jobs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["title"], name: "index_jobs_on_title"
+  end
 
   create_table "resumes", force: :cascade do |t|
     t.text "content"
