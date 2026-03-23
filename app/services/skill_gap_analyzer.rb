@@ -32,6 +32,19 @@ class SkillGapAnalyzer
     match_score = basic_score(semantic_result[:matched], job_skills)
     weighted_score = calculate_weighted_score(weights, semantic_result)
 
+    smart_score = SmartScoreService.new(
+      {
+        weighted_score: weighted_score,
+        proficiency: proficiency,
+        missing_critical_skills: critical_missing(weights, semantic_result),
+        weak_matched_skills: weak_matched_skills(proficiency, semantic_result)
+      },
+      @resume_text,
+      @job_description
+    ).compute
+
+    puts "smart_score: #{smart_score.inspect}"
+
     {
       match_score: match_score,
       weighted_score: weighted_score,
@@ -42,6 +55,9 @@ class SkillGapAnalyzer
       weak_matched_skills: weak_matched_skills(proficiency, semantic_result),
       missing_critical_skills: critical_missing(weights, semantic_result),
       breakdown: build_breakdown(weights, semantic_result),
+      # 🔥 NEW
+      smart_score: smart_score[:final_score],
+      score_breakdown: smart_score[:components],
       recommendations: build_recommendations(semantic_result,proficiency,weights)
     }
   end

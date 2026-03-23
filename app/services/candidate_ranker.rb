@@ -1,15 +1,3 @@
-# candidates = [
-#   { id: 1, resume: "Java Spring Boot developer with 5 years experience" },
-#   { id: 2, resume: "Java developer with basic Spring knowledge" }
-# ]
-
-# job = "Looking for strong Java + Spring Boot developer. Must have experience."
-
-# ranked = CandidateRanker.new(
-#   job_description: job,
-#   candidates: candidates,
-#   provider: :ollama
-# ).rank
 class CandidateRanker
   def initialize(job_description:, candidates:, provider: nil)
     @job_description = job_description
