@@ -4,6 +4,8 @@ module Embeddings::Providers
     def self.build(provider_name = nil)
       provider_name ||= ENV["EMBEDDINGS_PROVIDER"] || "openai"
 
+      provider_name = provider_name.to_s.downcase
+
       case provider_name
       when "openai"
         Embeddings::Providers::OpenAIProvider.new

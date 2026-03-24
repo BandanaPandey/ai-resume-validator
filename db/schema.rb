@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_23_064508) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_23_065544) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -42,9 +42,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_064508) do
     t.integer "score"
     t.integer "smart_score"
     t.datetime "updated_at", null: false
+    t.index ["analysis"], name: "index_job_applications_on_analysis", using: :gin
     t.index ["candidate_id"], name: "index_job_applications_on_candidate_id"
     t.index ["job_id", "candidate_id"], name: "index_job_applications_on_job_id_and_candidate_id", unique: true
     t.index ["job_id"], name: "index_job_applications_on_job_id"
+    t.index ["rank"], name: "index_job_applications_on_rank"
+    t.index ["score"], name: "index_job_applications_on_score"
   end
 
   create_table "jobs", force: :cascade do |t|

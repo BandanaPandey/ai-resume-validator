@@ -3,6 +3,7 @@ module Llm::Providers
   class ProviderFactory
     def self.build(provider_name = nil)
       provider_name ||= ENV["AI_PROVIDER"] || "openai"
+      provider_name = provider_name.to_s.downcase
 
       case provider_name
       when "openai"
