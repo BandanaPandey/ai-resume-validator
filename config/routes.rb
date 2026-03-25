@@ -10,6 +10,7 @@ Rails.application.routes.draw do
   namespace :api do
     resources :resumes, only: [:create]
     post "skill_gap", to: "skill_gap#analyze"
+    post :compare_candidates, to: "comparisons#compare_candidates"
     resources :jobs, only: [:create, :show]
   end
 end

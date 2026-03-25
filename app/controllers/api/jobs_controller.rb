@@ -2,7 +2,7 @@ class Api::JobsController < ApplicationController
   def create
     job = Job.create!(
       title: params[:title],
-      description: params[:description]
+      description: params[:job_description]
     )
 
     candidates = params[:candidates].map do |c|

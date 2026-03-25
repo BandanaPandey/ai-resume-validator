@@ -11,6 +11,10 @@ class Llm::Providers::OllamaProvider < Llm::Providers::BaseProvider
     parse(response)
   end
 
+  def compare_candidates(prompt)
+    call_ollama(prompt)
+  end
+
   private
 
   def call_ollama(prompt)
