@@ -1,4 +1,8 @@
 class SkillGapAnalyzer
+  CRITICAL_WEIGHT_THRESHOLD = 0.75
+  LOW_SEMANTIC_THRESHOLD = 0.4
+  MID_SEMANTIC_THRESHOLD = 0.65
+
   def initialize(resume_text:, job_description:, provider: nil)
     @resume_text = resume_text
     @job_description = job_description
@@ -10,7 +14,7 @@ class SkillGapAnalyzer
     resume_skills = extract(@resume_text)
     job_skills = extract(@job_description)
 
-    # 🔹 Semantic matching
+     # 🔹 Semantic matching
     matcher = SemanticSkillMatcher.new(provider: @provider)
     semantic_result = matcher.match(resume_skills, job_skills)
 
@@ -19,8 +23,6 @@ class SkillGapAnalyzer
       @resume_text,
       resume_skills
     ).call
-
-    puts "proficiency: #{proficiency.inspect}"
 
     # 🔥 NEW: Job weighting
     weights = JobSkillWeighter.new(@job_description).weight(job_skills)
@@ -32,18 +34,19 @@ class SkillGapAnalyzer
     match_score = basic_score(semantic_result[:matched], job_skills)
     weighted_score = calculate_weighted_score(weights, semantic_result)
 
+    weak_skills = weak_matched_skills(proficiency, semantic_result)
+    critical_skills = critical_missing(weights, semantic_result, proficiency)
+
     smart_score = SmartScoreService.new(
       {
         weighted_score: weighted_score,
         proficiency: proficiency,
-        missing_critical_skills: critical_missing(weights, semantic_result),
-        weak_matched_skills: weak_matched_skills(proficiency, semantic_result)
+        missing_critical_skills: critical_skills,
+        weak_matched_skills: weak_skills
       },
       @resume_text,
       @job_description
     ).compute
-
-    puts "smart_score: #{smart_score.inspect}"
 
     {
       match_score: match_score,
@@ -51,14 +54,13 @@ class SkillGapAnalyzer
       matched_skills: matched_skills,
       missing_skills: missing_skills,
       semantic_matches: semantic_result[:matched],
-      proficiency: proficiency, # 🔥 NEW
-      weak_matched_skills: weak_matched_skills(proficiency, semantic_result),
-      missing_critical_skills: critical_missing(weights, semantic_result),
+      proficiency: proficiency,
+      weak_matched_skills: weak_skills,
+      missing_critical_skills: critical_skills,
       breakdown: build_breakdown(weights, semantic_result),
-      # 🔥 NEW
       smart_score: smart_score[:final_score],
       score_breakdown: smart_score[:components],
-      recommendations: build_recommendations(semantic_result,proficiency,weights)
+      recommendations: build_recommendations(semantic_result, proficiency, weights)
     }
   end
 
@@ -100,25 +102,89 @@ class SkillGapAnalyzer
   # Weak Matched Skills
   #########################################
   def weak_matched_skills(proficiency, semantic)
-    matched_names = semantic[:matched].map { |m| m[:resume_skill] }
+    semantic[:matched].filter_map do |m|
+      prof = proficiency.find { |p| p[:skill] == m[:resume_skill] }
 
-    proficiency
-      .select do |p|
-        matched_names.include?(p[:skill]) &&
-        %w[beginner intermediate].include?(p[:level])
+      next unless prof
+
+      if m[:score] < 0.7 || %w[beginner intermediate].include?(prof[:level])
+        {
+          skill: m[:job_skill],
+          resume_skill: m[:resume_skill],
+          score: m[:score].round(2),
+          level: prof[:level],
+          reason: build_weak_reason(m[:score], prof[:level])
+        }
       end
-      .map { |p| p[:skill] }
+    end
   end
 
   #########################################
   # Critical Missing Skills
   #########################################
-  def critical_missing(weights, semantic)
+  def critical_missing(weights, semantic, proficiency)
     missing = semantic[:missing]
 
-    weights
-      .select { |w| w[:weight] >= 0.9 && missing.include?(w[:skill]) }
-      .map { |w| w[:skill] }
+    missing.filter_map do |skill|
+      weight = weights.find { |w| w[:skill] == skill }&.dig(:weight) || 0.5
+
+      semantic_score = best_semantic_score(skill, semantic)
+      prof = related_proficiency(skill, proficiency)
+
+      if critical?(weight, semantic_score, prof)
+        {
+          skill: skill,
+          weight: weight.round(2),
+          semantic_score: semantic_score.round(2),
+          proficiency: prof,
+          reason: build_critical_reason(weight, semantic_score, prof)
+        }
+      end
+    end
+  end
+
+  #########################################
+  def best_semantic_score(skill, semantic)
+    semantic[:matched]
+      .select { |m| m[:job_skill] == skill }
+      .map { |m| m[:score] }
+      .max || 0.0
+  end
+
+  #########################################
+  def related_proficiency(skill, proficiency)
+    match = proficiency.find { |p| p[:skill].include?(skill) }
+    match&.dig(:level)
+  end
+
+  #########################################
+  def critical?(weight, semantic_score, prof)
+    return false if weight < CRITICAL_WEIGHT_THRESHOLD
+
+    return true if semantic_score < LOW_SEMANTIC_THRESHOLD
+
+    if semantic_score < MID_SEMANTIC_THRESHOLD
+      return true if %w[beginner intermediate].include?(prof)
+    end
+
+    false
+  end
+
+  #########################################
+  def build_critical_reason(weight, semantic_score, prof)
+    reasons = []
+    reasons << "High importance (#{weight})"
+    reasons << (semantic_score < 0.4 ? "No/low semantic match" : "Partial match")
+    reasons << "Low proficiency (#{prof})" if prof
+    reasons.join(" + ")
+  end
+
+  #########################################
+  def build_weak_reason(score, level)
+    reasons = []
+    reasons << "Low semantic match" if score < 0.7
+    reasons << "Low proficiency (#{level})" if %w[beginner intermediate].include?(level)
+    reasons.join(" + ")
   end
 
   #########################################
@@ -142,7 +208,7 @@ class SkillGapAnalyzer
   def build_recommendations(semantic, proficiency, weights)
     recommendations = []
 
-    # Missing skills
+     # Missing skills
     semantic[:missing].each do |skill|
       recommendations << "Add #{skill} if you have experience"
     end
@@ -150,13 +216,13 @@ class SkillGapAnalyzer
     # Weak skills
     proficiency.each do |p|
       if %w[beginner intermediate].include?(p[:level])
-        recommendations << "Improve #{p[:skill]} (currently #{p[:level]})"
+        recommendations << "Improve #{p[:skill]} (#{p[:level]})"
       end
     end
 
     # Critical missing
-    critical_missing(weights, semantic).each do |skill|
-      recommendations << "🔥 PRIORITY: Learn #{skill} (critical for this job)"
+    critical_missing(weights, semantic, proficiency).each do |s|
+      recommendations << "🔥 PRIORITY: Learn #{s[:skill]} (#{s[:reason]})"
     end
 
     recommendations.uniq

@@ -1,9 +1,8 @@
-# app/services/smart_score_service.rb
 class SmartScoreService
   def initialize(gap_data, resume_text, job_description)
     @gap = gap_data
-    @resume = resume_text
-    @job = job_description
+    @resume = resume_text.downcase
+    @job = job_description.downcase
   end
 
   def compute
@@ -50,11 +49,15 @@ class SmartScoreService
   end
 
   #########################################
+  # 🔥 IMPROVED PROFICIENCY BONUS
+  #########################################
   def proficiency_bonus
     return 0 unless @gap[:proficiency]
 
     strong = @gap[:proficiency].count { |p| %w[advanced expert].include?(p[:level]) }
-    strong * 2
+    medium = @gap[:proficiency].count { |p| p[:level] == "intermediate" }
+
+    (strong * 3) + (medium * 1)
   end
 
   #########################################
@@ -63,20 +66,20 @@ class SmartScoreService
 
     case years
     when 0..1 then 2
-    when 2..3 then 5
-    when 4..6 then 10
-    else 15
+    when 2..3 then 6
+    when 4..6 then 12
+    else 18
     end
   end
 
   #########################################
   def keyword_score
-    KeywordMatcher.new(@resume, @job).score * 0.2
+    KeywordMatcher.new(@resume, @job).score * 0.3
   end
 
   #########################################
   def impact_score
-    strong_words = %w[built scaled designed led developed architected]
+    strong_words = %w[built scaled designed led developed architected optimized improved]
 
     count = strong_words.count { |w| @resume.include?(w) }
 
@@ -84,11 +87,16 @@ class SmartScoreService
   end
 
   #########################################
+  # 🔥 IMPROVED PENALTY
+  #########################################
   def penalty
-    critical = (@gap[:missing_critical_skills] || []).size * 15
-    weak = (@gap[:weak_matched_skills] || []).size * 5
+    critical_penalty = (@gap[:missing_critical_skills] || []).sum do |c|
+      (c[:weight] * 20)
+    end
 
-    critical + weak
+    weak_penalty = (@gap[:weak_matched_skills] || []).size * 4
+
+    (critical_penalty + weak_penalty).round
   end
 
   #########################################
