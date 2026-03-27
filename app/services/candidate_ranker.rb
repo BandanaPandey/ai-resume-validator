@@ -34,6 +34,11 @@ class CandidateRanker
     score = gap[:smart_score]
     score_breakdown = gap[:score_breakdown]
 
+    decision_data = HiringDecisionService.new(
+      gap: gap,
+      score: score
+    ).call
+
     {
       candidate_id: candidate[:id],
       candidate_name: candidate[:name],
@@ -43,7 +48,11 @@ class CandidateRanker
       highlights: build_highlights(gap),
       risks: build_risks(gap),
       recommendation: hiring_signal(score, gap),
-      details: gap
+      details: gap,
+       # 🔥 NEW
+      decision: decision_data[:decision],
+      confidence: decision_data[:confidence],
+      decision_reasons: decision_data[:reasons]
     }
   end
 
