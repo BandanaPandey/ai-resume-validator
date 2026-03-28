@@ -5,7 +5,21 @@ class Api::JobsController < ApplicationController
       description: params[:job_description]
     )
 
-    candidates = params[:candidates].map do |c|
+    processed_candidates = params[:candidates].values.map do |c|
+      file = c[:file]
+      puts "FILE CLASS: #{file.class}"
+      resume_text = if file && file.is_a?(ActionDispatch::Http::UploadedFile)
+        ResumeParserService.new(file).extract_text
+      else
+        c[:resume]
+      end
+      {
+        name: c[:name],
+        resume: resume_text
+      }
+    end
+
+    candidates = processed_candidates.map do |c|
       Candidate.create!(
         name: c[:name],
         resume_text: c[:resume]
