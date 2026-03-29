@@ -164,6 +164,7 @@ GEM
       net-pop
       net-smtp
     marcel (1.1.0)
+    matrix (0.4.3)
     mcp (0.8.0)
       json-schema (>= 4.1)
     method_source (1.1.0)
@@ -210,6 +211,7 @@ GEM
     parser (3.3.10.2)
       ast (~> 2.4.1)
       racc
+    pdf-core (0.9.0)
     pdf-reader (2.15.1)
       Ascii85 (>= 1.0, < 3.0, != 2.0.0)
       afm (>= 0.2.1, < 2)
@@ -226,6 +228,9 @@ GEM
     pgvector (0.3.3)
     pp (0.6.3)
       prettyprint
+    prawn (2.4.0)
+      pdf-core (~> 0.9.0)
+      ttfunk (~> 1.7)
     prettyprint (0.2.0)
     prism (1.9.0)
     pry (0.16.0)
@@ -391,9 +396,11 @@ DEPENDENCIES
   dotenv-rails
   image_processing (~> 1.2)
   kamal
+  matrix
   pdf-reader
   pg (~> 1.1)
   pgvector
+  prawn
   pry
   puma (>= 5.0)
   rack-cors

@@ -11,6 +11,7 @@ Rails.application.routes.draw do
     resources :resumes, only: [:create]
     post "skill_gap", to: "skill_gap#analyze"
     post :compare_candidates, to: "comparisons#compare_candidates"
+    post "reports/candidate", to: "reports#candidate"
     resources :jobs, only: [:create, :show]
   end
 end
