@@ -12,6 +12,7 @@ Rails.application.routes.draw do
     post "skill_gap", to: "skill_gap#analyze"
     post :compare_candidates, to: "comparisons#compare_candidates"
     post "reports/candidate", to: "reports#candidate"
+    post "reports/shortlist", to: "reports#shortlist"
     resources :jobs, only: [:create, :show]
   end
 end

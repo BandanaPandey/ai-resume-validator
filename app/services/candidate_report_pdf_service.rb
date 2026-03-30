@@ -1,78 +1,137 @@
-require 'prawn'
+require "prawn"
 
 class CandidateReportPdfService
-  def initialize(candidate)
-    @candidate = candidate
+  def initialize(candidates:, job_description: nil, title: nil)
+    @candidates = normalize_candidates(candidates)
+    @job_description = job_description
+    @title = title || default_title
   end
 
+  #########################################
+  # MAIN
+  #########################################
   def generate
     Prawn::Document.new do |pdf|
       header(pdf)
-      score_section(pdf)
-      summary(pdf)
-      highlights(pdf)
-      risks(pdf)
-      breakdown(pdf)
+      job_section(pdf) if @job_description.present?
+
+      @candidates.each_with_index do |candidate, index|
+        candidate_section(pdf, candidate, index)
+
+        # 🔥 page break only if multiple candidates
+        if multiple_candidates? && index < @candidates.size - 1
+          pdf.start_new_page
+        end
+      end
     end.render
   end
 
   private
 
   #########################################
+  # Normalize input (single OR array)
+  #########################################
+  def normalize_candidates(candidates)
+    return [] if candidates.blank?
+
+    if candidates.is_a?(Array)
+      candidates.first(10) # 🔥 enforce top 10
+    else
+      [candidates] # 🔥 single candidate support
+    end
+  end
+
+  #########################################
+  def multiple_candidates?
+    @candidates.size > 1
+  end
+
+  #########################################
+  def default_title
+    multiple_candidates? ? "Top Candidates Report" : "Candidate Report"
+  end
+
+  #########################################
+  # HEADER
+  #########################################
   def header(pdf)
-    pdf.text "Candidate Report", size: 22, style: :bold
+    pdf.text @title, size: 22, style: :bold
     pdf.move_down 10
 
-    pdf.text "Name: #{@candidate[:candidate_name]}"
-    pdf.text "Rank: #{@candidate[:rank]}"
-    pdf.move_down 10
+    pdf.text "Generated at: #{Time.current.strftime('%d %B %Y')}"
+    pdf.move_down 15
   end
 
   #########################################
-  def score_section(pdf)
-    pdf.text "Score: #{@candidate[:score]}", size: 16, style: :bold
-    pdf.text "Decision: #{@candidate[:decision]}"
-    pdf.text "Confidence: #{@candidate[:confidence]}%"
-    pdf.move_down 10
+  # JOB DESCRIPTION
+  #########################################
+  def job_section(pdf)
+    pdf.text "Job Description", style: :bold
+    pdf.text truncate(@job_description, 1000)
+    pdf.move_down 15
   end
 
   #########################################
-  def summary(pdf)
+  # CANDIDATE BLOCK
+  #########################################
+  def candidate_section(pdf, candidate, index)
+    pdf.text "#{index + 1}. #{candidate[:candidate_name]}", size: 16, style: :bold
+
+    pdf.text "Score: #{candidate[:score]}"
+    pdf.text "Decision: #{candidate[:decision]}"
+    pdf.text "Confidence: #{candidate[:confidence]}%"
+    pdf.move_down 8
+
+    # Summary
     pdf.text "Summary", style: :bold
-    pdf.text @candidate[:summary] || "-"
-    pdf.move_down 10
+    pdf.text candidate[:summary] || "-"
+    pdf.move_down 8
+
+    # Highlights
+    if present?(candidate[:highlights])
+      pdf.text "Strengths", style: :bold
+      candidate[:highlights].each { |h| pdf.text "• #{h}" }
+      pdf.move_down 8
+    end
+
+    # Risks
+    if present?(candidate[:risks])
+      pdf.text "Risks", style: :bold
+      candidate[:risks].each { |r| pdf.text "• #{r}" }
+      pdf.move_down 8
+    end
+
+    # Decision Reasons
+    if present?(candidate[:decision_reasons])
+      pdf.text "Why this decision?", style: :bold
+      candidate[:decision_reasons].each { |r| pdf.text "• #{r}" }
+      pdf.move_down 8
+    end
+
+    # Score Breakdown
+    if present?(candidate[:score_breakdown])
+      pdf.text "Score Breakdown", style: :bold
+      candidate[:score_breakdown].each do |k, v|
+        pdf.text "#{humanize(k)}: #{v.round}"
+      end
+    end
+
+    pdf.move_down 15
   end
 
   #########################################
-  def highlights(pdf)
-    return if @candidate[:highlights].blank?
-
-    pdf.text "Strengths", style: :bold
-    @candidate[:highlights].each do |h|
-      pdf.text "• #{h}"
-    end
-    pdf.move_down 10
+  # HELPERS
+  #########################################
+  def truncate(text, length)
+    return "" unless text
+    text.length > length ? "#{text[0...length]}..." : text
   end
 
-  #########################################
-  def risks(pdf)
-    return if @candidate[:risks].blank?
-
-    pdf.text "Risks", style: :bold
-    @candidate[:risks].each do |r|
-      pdf.text "• #{r}"
-    end
-    pdf.move_down 10
+  def present?(val)
+    val.respond_to?(:any?) ? val.any? : val.present?
   end
 
-  #########################################
-  def breakdown(pdf)
-    return unless @candidate[:score_breakdown]
-
-    pdf.text "Score Breakdown", style: :bold
-
-    @candidate[:score_breakdown].each do |k, v|
-      pdf.text "#{k.to_s.humanize}: #{v.round}"
-    end
+  def humanize(key)
+    key.to_s.gsub("_", " ").capitalize
   end
 end
