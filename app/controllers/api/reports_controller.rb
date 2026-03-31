@@ -12,7 +12,7 @@ class Api::ReportsController < ApplicationController
                 filename: "candidate_report.pdf",
                 type: "application/pdf",
                 disposition: "attachment"
-    end
+  end
 
   def shortlist
     candidates = params[:candidates]
@@ -27,5 +27,25 @@ class Api::ReportsController < ApplicationController
                 filename: "top_candidates_report.pdf",
                 type: "application/pdf",
                 disposition: "attachment"
+  end
+
+  #########################################
+  # 📩 Email Shortlist
+  #########################################
+  def email_shortlist
+    email = params[:email]
+    candidates = params[:candidates] || []
+    job_description = params[:job_description]
+
+    if email.blank?
+      return render json: { error: "Email is required" }, status: :unprocessable_entity
     end
+
+    ReportMailer
+      .shortlist_email(email, candidates, job_description)
+      .deliver_now # 🔥 for simplicity, using deliver_now. In production, consider deliver_later with ActiveJob and a background worker like Sidekiq for better performance and user experience.
+      #.deliver_later # 🔥 async
+
+    render json: { message: "Email sent successfully" }
+  end
 end

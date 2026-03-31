@@ -13,6 +13,7 @@ Rails.application.routes.draw do
     post :compare_candidates, to: "comparisons#compare_candidates"
     post "reports/candidate", to: "reports#candidate"
     post "reports/shortlist", to: "reports#shortlist"
+    post "reports/email_shortlist", to: "reports#email_shortlist"
     resources :jobs, only: [:create, :show]
   end
 end
