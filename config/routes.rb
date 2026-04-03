@@ -15,5 +15,10 @@ Rails.application.routes.draw do
     post "reports/shortlist", to: "reports#shortlist"
     post "reports/email_shortlist", to: "reports#email_shortlist"
     resources :jobs, only: [:create, :show]
+    #########################################
+    # 🔐 AUTH ROUTES
+    #########################################
+    post "/signup", to: "auth#signup"
+    post "/login", to: "auth#login"
   end
 end

@@ -1,6 +1,6 @@
 class Api::JobsController < ApplicationController
   def create
-    job = Job.create!(
+    job = current_user.jobs.create!(
       title: params[:title],
       description: params[:job_description]
     )
