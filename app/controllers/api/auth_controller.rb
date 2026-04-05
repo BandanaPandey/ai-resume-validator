@@ -20,6 +20,14 @@ class Api::AuthController < ApplicationController
   # LOGIN
   #########################################
   def login
+    limiter = RateLimiter.new(rate_limit_key)
+
+    unless limiter.allowed?
+      return render json: {
+        error: "Too many login attempts. Try again later."
+      }, status: 429
+    end
+
     user = User.find_by(email: params[:email])
 
     if user&.authenticate(params[:password])
@@ -27,11 +35,26 @@ class Api::AuthController < ApplicationController
 
       render json: { token: token, user: user }
     else
-      render json: { error: "Invalid credentials" }, status: 401
+      limiter.increment! # 🔥 count failed attempts
+
+      render json: {
+        error: "Invalid credentials",
+        attempts_left: limiter.remaining
+      }, status: 401
     end
   end
 
   private
+
+  #########################################
+  # Unique key per IP + email
+  #########################################
+  def rate_limit_key
+    ip = request.remote_ip
+    email = params[:email].to_s.downcase
+
+    "#{ip}:#{email}"
+  end
 
   def user_params
     params.permit(:email, :password, :name)
